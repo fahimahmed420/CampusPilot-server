@@ -11,8 +11,8 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB setup
-const client = new MongoClient(process.env.MONGO_URI); // ✅ removed deprecated options
-let db, usersCollection, transactionsCollection, classesCollection,scoresCollection;
+const client = new MongoClient(process.env.MONGO_URI);
+let db, usersCollection, transactionsCollection, classesCollection, scoresCollection, tasksCollection;
 
 async function connectDB() {
   try {
@@ -21,6 +21,7 @@ async function connectDB() {
     usersCollection = db.collection("users");
     transactionsCollection = db.collection("transactions");
     classesCollection = db.collection("classes");
+    tasksCollection = db.collection("tasks");
     scoresCollection = db.collection("scores");
     console.log("✅ MongoDB connected");
   } catch (err) {
@@ -153,7 +154,11 @@ classesRouter.get("/", async (req, res) => {
     const { uid } = req.query;
     if (!uid) return res.status(400).json({ error: "UID is required" });
     const userClasses = await classesCollection.find({ uid }).toArray();
-    res.json(userClasses);
+    res.json(userClasses.map(cls => ({
+      ...cls,
+      id: cls._id.toString()
+    })));
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -169,7 +174,7 @@ const scoresRouter = express.Router();
 // Save score
 scoresRouter.post("/", async (req, res) => {
   try {
-    const { uid, subject, score, total } = req.body;
+    const { uid, subject, difficulty, score, total, timeSpent } = req.body;
     if (!uid || !subject || total === undefined) {
       return res.status(400).json({ error: "UID, subject, and total are required" });
     }
@@ -177,8 +182,10 @@ scoresRouter.post("/", async (req, res) => {
     const newScore = {
       uid,
       subject,
+      difficulty,
       score: Number(score),
-      total: Number(total), // use the sent total
+      total: Number(total),
+      timeSpent: Number(timeSpent || 0),
       date: new Date().toISOString(),
     };
 
@@ -221,12 +228,71 @@ scoresRouter.get("/:uid", async (req, res) => {
 
 
 /* ===========================
+   TASKS ROUTES
+=========================== */
+const tasksRouter = express.Router();
+
+// GET all tasks
+tasksRouter.get("/", async (req, res) => {
+  try {
+    const tasks = await tasksCollection.find().toArray();
+    res.json(tasks.map(task => ({ ...task, id: task._id.toString() })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST a new task
+tasksRouter.post("/", async (req, res) => {
+  try {
+    const newTask = req.body;
+    const result = await tasksCollection.insertOne(newTask);
+    res.json({ ...newTask, id: result.insertedId.toString() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT update a task (status, etc.)
+tasksRouter.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    await tasksCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE a task
+tasksRouter.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await tasksCollection.deleteOne({ _id: new ObjectId(id) });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+/* ===========================
    ROUTE MOUNTING
 =========================== */
 app.use("/api/users", usersRouter);
 app.use("/api/transactions", transactionsRouter);
 app.use("/api/classes", classesRouter);
 app.use("/api/scores", scoresRouter);
+app.use("/api/tasks", tasksRouter);
 
 /* ===========================
    SERVER START
