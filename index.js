@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
+const { verifyFirebaseToken } = require("./verifyToken");
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -288,11 +290,12 @@ tasksRouter.delete("/:id", async (req, res) => {
 /* ===========================
    ROUTE MOUNTING
 =========================== */
-app.use("/api/users", usersRouter);
-app.use("/api/transactions", transactionsRouter);
-app.use("/api/classes", classesRouter);
-app.use("/api/scores", scoresRouter);
-app.use("/api/tasks", tasksRouter);
+app.use("/api/users", verifyFirebaseToken, usersRouter);
+app.use("/api/transactions", verifyFirebaseToken, transactionsRouter);
+app.use("/api/classes", verifyFirebaseToken, classesRouter);
+app.use("/api/scores", verifyFirebaseToken, scoresRouter);
+app.use("/api/tasks", verifyFirebaseToken, tasksRouter);
+
 
 /* ===========================
    SERVER START
