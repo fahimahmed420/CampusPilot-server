@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.0",
-    "openai": "^5.16.0"
+    "openai": "^5.16.0",
+    "serverless-http": "^4.0.0"
   }
 }
