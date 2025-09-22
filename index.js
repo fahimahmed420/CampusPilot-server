@@ -9,14 +9,25 @@ const port = process.env.PORT || 5000;
 
 // ===== CORS CONFIG =====
 const allowedOrigins = [
-  "http://localhost:5173",          // local dev
-  "https://campus-pilot-24c9b.web.app/" // deployed frontend
+  "http://localhost:5173",      // local dev
+  "https://campus-pilot-24c9b.web.app" // deployed frontend (no trailing slash)
 ];
 
-app.use(cors({
- origin: "*",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
